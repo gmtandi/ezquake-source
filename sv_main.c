@@ -3036,7 +3036,6 @@ static void SV_CheckTimeouts (void)
 	}
 }
 
-#ifdef SERVERONLY
 /*
 ===================
 SV_GetConsoleCommands
@@ -3057,7 +3056,6 @@ static void SV_GetConsoleCommands (void)
 		Cbuf_AddText ("\n");
 	}
 }
-#endif
 
 /*
 ===================
@@ -3201,13 +3199,13 @@ void SV_Frame (double time1)
 
 	SV_MVDStream_Poll();
 
-#ifdef SERVERONLY
+if (dedicated) {
 	// check for commands typed to the host
 	SV_GetConsoleCommands ();
 
 	// process console commands
 	Cbuf_Execute ();
-#endif
+}
 
 	// check for map change;
 	SV_Map(true);
@@ -3298,10 +3296,10 @@ void SV_InitLocal (void)
 	Cvar_Register (&sv_serverip);
 	Cvar_Register (&sv_forcespec_onfull);
 
-#ifdef SERVERONLY
+if (dedicated) {
 	Cvar_Register (&rcon_password);
 	Cvar_Register (&password);
-#endif
+}
 
 	Cvar_Register (&sv_hashpasswords);
 	//Added by VVD {

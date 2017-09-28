@@ -52,6 +52,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "config_manager.h"
 #include "EX_qtvlist.h"
 
+#if !defined(CLIENTONLY) && !defined(SERVERONLY)
+qbool	dedicated = false;
+#endif
+
 double		curtime;
 
 static int	host_hunklevel;
@@ -407,6 +411,11 @@ void Host_Error (char *error, ...)
 	Com_Printf ("Host_Error: %s\n",string);
 	Com_Printf ("===========================\n\n");
 
+
+	if (dedicated) {
+		Sys_Error ("%s", string);
+	}
+
 #ifndef CLIENTONLY
 	SV_Shutdown (va("server crashed: %s\n", string));
 #endif
@@ -447,9 +456,11 @@ void Host_InitMemory (int memsize)
 void Host_ClearMemory (void)
 {
 	// FIXME, move to CL_ClearState
+if (!dedicated)
 	D_FlushCaches ();
 
 	// FIXME, move to CL_ClearState
+if (!dedicated)
 	Mod_ClearAll ();
 
 	CM_InvalidateMap ();
@@ -464,7 +475,9 @@ void Host_Frame (double time)
 		return;			// something bad happened, or the server disconnected
 
 	curtime += time;
-
+if (dedicated)
+	SV_Frame(time);
+else
 	CL_Frame (time);	// will also call SV_Frame
 }
 
@@ -600,6 +613,7 @@ void Host_Init (int argc, char **argv, int default_memsize)
 	NET_Init ();
 
 	Commands_For_Configs_Init ();
+if (!dedicated) {
 	Browser_Init2();
 	ConfigManager_Init();
 	ResetBinds();
@@ -616,7 +630,7 @@ void Host_Init (int argc, char **argv, int default_memsize)
 	COM_ForceExtensionEx (cfg, ".cfg", sizeof (cfg));
 	Cbuf_AddText(va("cfg_load %s\n", cfg));
 	Cbuf_Execute();
-
+}
 	Cbuf_AddEarlyCommands ();
 	Cbuf_Execute ();
 
@@ -672,6 +686,11 @@ void Host_Init (int argc, char **argv, int default_memsize)
 
 	Com_Printf_State (PRINT_INFO, "Exe: "__DATE__" "__TIME__"\n");
 	Com_Printf_State (PRINT_INFO, "Hunk allocation: %4.1f MB\n", (float) host_memsize / (1024 * 1024));
+if (dedicated) {
+		Com_Printf ("====== ezQuake.SourceForge.net ======\n\n");
+		Com_Printf ("======== ezQuake Initialized ========\n\n");
+		Com_Printf("\n");
+} else {
 	Com_Printf("\n");
 	Com_Printf("http://ezquake.github.io/\n");
 	Com_Printf("\n");
@@ -680,7 +699,20 @@ void Host_Init (int argc, char **argv, int default_memsize)
 	Com_Printf("\n");
 	Com_Printf(Host_PrintBars("&c1e1ezQuake Initialized&r", 38));
 	Com_Printf("\n");
+}
 	Com_Printf("Type /help to access the manual.\nUse /describe for help on commands.\n\n", VersionString());
+
+if (dedicated) {
+		Cbuf_AddText ("exec server.cfg\n");
+		Cmd_StuffCmds_f ();		// process command line arguments
+		Cbuf_Execute ();
+
+		// if a map wasn't specified on the command line, spawn start map
+		if (!com_serveractive)
+			Cmd_ExecuteString ("map start");
+		if (!com_serveractive)
+			Host_Error ("Couldn't spawn a server");
+} else {
 
 	if ((vf = FS_OpenVFS("autoexec.cfg", "rb", FS_ANY))) {
 		Cbuf_AddText ("exec autoexec.cfg\n\n");
@@ -689,6 +721,7 @@ void Host_Init (int argc, char **argv, int default_memsize)
 
 	Cmd_StuffCmds_f ();		// process command line arguments
 	Cbuf_AddText ("cl_warncmd 1\n");
+}
 
 	Sys_CheckQWProtocolHandler();
 

@@ -1881,6 +1881,10 @@ void EX_FileList_Init(void);
 
 void CL_Init (void) 
 {
+
+  if (dedicated)
+    return;
+
 	// When ezquake was launched via a webpage (qtv) the working directory wasn't properly
 	// set. Changing the directory makes sure it starts out in the directory where ezquake 
 	// is located.

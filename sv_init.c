@@ -562,7 +562,9 @@ void SV_SpawnServer (char *mapname, qbool devmap, char* entityfile)
 	SV_MVD_Record(NULL, true);
 
 #ifndef SERVERONLY
-	CL_ClearState ();
+	if (!dedicated) {
+		CL_ClearState ();
+	}
 #endif
 }
 

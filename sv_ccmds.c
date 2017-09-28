@@ -429,6 +429,7 @@ void SV_Map (qbool now)
 			SV_MVDStop_f();
 
 #ifndef SERVERONLY
+	if (!dedicated)
 		CL_BeginLocalConnection ();
 #endif
 
@@ -1851,27 +1852,30 @@ void SV_InitOperatorCommands (void)
 	Cmd_AddCommand ("setmaster", SV_SetMaster_f);
 
 	Cmd_AddCommand ("heartbeat", SV_Heartbeat_f);
+
+
+#ifndef SERVERONLY
+if (!dedicated)
+{
 	Cmd_AddCommand ("save", SV_SaveGame_f); 
 	Cmd_AddCommand ("load", SV_LoadGame_f); 
+}
+#endif
 
-#ifdef SERVERONLY
+if (dedicated) {
 	Cmd_AddCommand ("say", SV_ConSay_f);
 	Cmd_AddCommand ("quit", SV_Quit_f);
 	Cmd_AddCommand ("restart", SV_Restart_f);
-#endif
-
-#ifdef SERVERONLY
 	Cmd_AddCommand ("god", SV_God_f);
 	Cmd_AddCommand ("give", SV_Give_f);
 	Cmd_AddCommand ("noclip", SV_Noclip_f);
-#endif
+	Cmd_AddCommand ("user", SV_User_f); // FIXME: probably should be done like CL_Serverinfo_f().
+	Cmd_AddCommand ("serverinfo", SV_Serverinfo_f);
+}
+
 
 	Cmd_AddCommand ("localinfo", SV_Localinfo_f);
 
-#ifdef SERVERONLY
-	Cmd_AddCommand ("serverinfo", SV_Serverinfo_f);
-	Cmd_AddCommand ("user", SV_User_f); // FIXME: probably should be done like CL_Serverinfo_f().
-#endif
 
 	Cmd_AddCommand ("gamedir", SV_Gamedir_f);
 	Cmd_AddCommand ("sv_gamedir", SV_Gamedir);

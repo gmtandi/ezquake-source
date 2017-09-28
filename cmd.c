@@ -1567,6 +1567,9 @@ void Cmd_ExpandString (const char *data, char *dest)
 					break; // there no more space in buf
 			}
 
+#ifndef SERVERONLY
+if (!dedicated) {
+
 			str = Cmd_MacroString (buf, &macro_length);
 			name_length = macro_length;
 
@@ -1576,6 +1579,21 @@ void Cmd_ExpandString (const char *data, char *dest)
                 if (bestvar->teamplay)
                     cbuf_current = &cbuf_formatted_comms;
 			}
+} else
+#endif
+{
+				if (bestvar) {
+					str = bestvar->string;
+					name_length = strlen (bestvar->name);
+                    if (bestvar->teamplay)
+                        cbuf_current = &cbuf_formatted_comms;
+                } else {
+					str = NULL;
+				}
+}
+
+
+
 
 			if (str) {
 				int fixed_width = 0;

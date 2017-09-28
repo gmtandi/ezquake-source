@@ -59,7 +59,10 @@ int noconinput = 0;
 qbool stdin_ready;
 int do_stdin = 1;
 
+extern cvar_t sys_yieldcpu;
 cvar_t sys_nostdout = {"sys_nostdout", "0"};
+cvar_t	sys_extrasleep = {"sys_extrasleep","0"};
+
 
 void Sys_Printf (char *fmt, ...)
 {
@@ -68,7 +71,10 @@ void Sys_Printf (char *fmt, ...)
 	char text[2048];
 	unsigned char *p;
 
-	return;
+#ifdef NDEBUG
+	if (!dedicated)
+		return;
+#endif
 
 	va_start (argptr,fmt);
 	vsnprintf (text, sizeof(text), fmt, argptr);
@@ -82,7 +88,8 @@ void Sys_Printf (char *fmt, ...)
 			printf("[%02x]", *p);
 		else
 			putc(*p, stdout);
-#else
+#endif
+#ifndef DEBUG
 	return;
 #endif
 }
@@ -95,6 +102,17 @@ void Sys_Quit(void)
 
 void Sys_Init(void)
 {
+	if (dedicated) {
+		Cvar_Register (&sys_nostdout);
+		Cvar_Register (&sys_extrasleep);
+	}
+	else {
+    Cvar_SetCurrentGroup(CVAR_GROUP_SYSTEM_SETTINGS);
+    Cvar_Register (&sys_yieldcpu);
+    Cvar_ResetCurrentGroup();
+}
+
+
 #ifdef __APPLE__
        extern void init_url_handler();
        init_url_handler();
@@ -299,6 +317,29 @@ double Sys_DoubleTime(void)
 }
 #endif
 
+
+char *Sys_ConsoleInput (void) {
+        static char text[256];
+        int len;
+
+        if (!dedicated)
+                return NULL;
+
+        if (!stdin_ready || !do_stdin)
+                return NULL; // the select didn't say it was ready
+        stdin_ready = false;
+
+        len = read (0, text, sizeof(text));
+        if (len == 0) { // end of file
+                do_stdin = 0;
+                return NULL;
+        }
+        if (len < 1)
+                return NULL;
+        text[len - 1] = 0; // rip off the /n and terminate
+
+}
+
 int main(int argc, char **argv)
 {
 	double time, oldtime, newtime;
@@ -319,6 +360,12 @@ int main(int argc, char **argv)
 			qconsole_log = fopen(s, "a");
 	}
 
+#if !defined(CLIENTONLY)
+	dedicated = COM_CheckParm ("-dedicated");
+#endif
+
+if (!dedicated) {
+
 	signal(SIGFPE, SIG_IGN);
 
 	// we need to check for -noconinput and -nostdout before Host_Init is called
@@ -327,7 +374,7 @@ int main(int argc, char **argv)
 
 	if (COM_CheckParm("-nostdout"))
 		sys_nostdout.value = 1;
-
+}
 	Host_Init (argc, argv, 32 * 1024 * 1024);
 
 	oldtime = Sys_DoubleTime ();
@@ -338,6 +385,10 @@ int main(int argc, char **argv)
 		oldtime = newtime;
 
 		Host_Frame(time);
+		if (dedicated) {
+			if (sys_extrasleep.value)
+				usleep (sys_extrasleep.value);
+		}
 	}
 }
 
